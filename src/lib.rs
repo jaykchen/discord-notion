@@ -32,16 +32,23 @@ async fn handle<B: Bot>(bot: &B, em: EventModel) {
             let channel_id = msg.channel_id;
             let content = msg.content;
 
-            let database = env::var("database").unwrap();
+            if msg.author.bot {
+                return;
+            }
+
+            _ = client
+                .send_message(channel_id.into(), &json!({"content": content}))
+                .await;
+            // let database = env::var("database").unwrap();
             let notion_token = env::var("notion_token").unwrap();
 
             let api = NotionApi::new(notion_token).unwrap();
 
             let page_id = PageId::from_str("21de6521-838e-4003-a964-ca10ec0d9d82").unwrap();
             match api.get_page(page_id).await {
-                Ok(a) => {
+                Ok(page) => {
                     _ = client
-                        .send_message(channel_id.into(), &json!({"content": content}))
+                        .send_message(channel_id.into(), &json!({"content": page}))
                         .await
                 }
                 Err(_e) => log::error!("Error: {}", _e),

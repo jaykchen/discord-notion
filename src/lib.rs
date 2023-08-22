@@ -12,6 +12,7 @@ use std::env;
 use std::str::FromStr;
 
 use notion_wasi::{ids::PageId, NotionApi};
+use slack_flows::send_message_to_channel;
 
 #[no_mangle]
 #[tokio::main(flavor = "current_thread")]
@@ -47,8 +48,10 @@ async fn handle<B: Bot>(bot: &B, em: EventModel) {
             let page_id = PageId::from_str("21de6521-838e-4003-a964-ca10ec0d9d82").unwrap();
             match api.get_page(page_id).await {
                 Ok(page) => {
+                    let content = page.properties.title().unwrap_or("no title".into());
+                    send_message_to_channel("ik8", "ch_err", content).await;
                     _ = client
-                        .send_message(channel_id.into(), &json!({"content": page}))
+                        .send_message(channel_id.into(), &json!({"content": page.title()}))
                         .await
                 }
                 Err(_e) => log::error!("Error: {}", _e),

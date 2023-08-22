@@ -21,3 +21,4 @@ http_req_wasi = { version = "0.10", features = ["wasmedge_ssl"] }
 unicase = "2.6.0"
 notion-flows="0.1.1"
 notion-wasi = "0.5.2"
+slack-flows = "0.3.4"

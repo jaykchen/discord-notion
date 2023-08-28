@@ -5,17 +5,26 @@ use http_req::{
     request::{Method, Request},
     uri::Uri,
 };
-use notion_flows::{
-    listen_to_event,
-    notion::models::{Page, PageCreateRequest},
+use notion_flows::notion::models::{Page, PageCreateRequest};
+use notion_wasi::{
+    ids::{DatabaseId, PageId},
+    models::{
+        block::{CreateBlock, TextAndChildren},
+        properties::PropertyValue::{self, Title},
+        // search::PropertyCondition::RichText,
+        text::{RichText, RichTextCommon, Text, TextColor},
+        Parent,
+        Properties,
+    },
+    NotionApi,
 };
+
 use serde::Deserialize;
 use serde_json::json;
+use slack_flows::send_message_to_channel;
+use std::collections::HashMap;
 use std::env;
 use std::str::FromStr;
-
-use notion_wasi::{ids::PageId, NotionApi};
-use slack_flows::send_message_to_channel;
 
 #[no_mangle]
 #[tokio::main(flavor = "current_thread")]
@@ -52,34 +61,61 @@ async fn handle<B: Bot>(bot: &B, em: EventModel) {
 
             let database_id = "1c945dd5-c2d5-48de-bb39-2569fdeca4c3";
 
-            let page = json!({
-                "parent": {
-                    "database_id": database_id
-                },
-                "properties": {
-                    "Name": {
-                        "title": [
-                            {
-                                "text": {
-                                    "content": "Tuscan Kale"
-                                }
-                            }
-                        ]
-                    },
-                    "Description": {
-                        "rich_text": [
-                            {
-                                "text": {
-                                    "content": "A green leafy vegetable."
-                                }
-                            }
-                        ]
-                    }
-                }
-            });
-            let page_json_str = serde_json::to_string(&page).unwrap();
-            let page_request: PageCreateRequest = serde_json::from_str(&page_json_str).unwrap();
+            // let page = json!({
+            //     "parent": {
+            //         "database_id": database_id
+            //     },
+            //     "properties": {
+            //         "Name": {
+            //             "title": [
+            //                 {
+            //                     "text": {
+            //                         "content": "Tuscan Kale"
+            //                     }
+            //                 }
+            //             ]
+            //         },
+            //         "Description": {
+            //             "rich_text": [
+            //                 {
+            //                     "text": {
+            //                         "content": "A green leafy vegetable."
+            //                     }
+            //                 }
+            //             ]
+            //         }
+            //     }
+            // });
 
+            let parent = Parent::Database {
+                database_id: DatabaseId::from_str(database_id).unwrap(),
+            };
+
+            let title_block = CreateBlock::Paragraph {
+                paragraph: TextAndChildren {
+                    rich_text: vec![RichText::Text {
+                        rich_text: RichTextCommon {
+                            plain_text: "Tuscan Kale".into(),
+                            href: None,
+                            annotations: None,
+                        },
+                        text: Text {
+                            content: "wow".to_string(),
+                            link: None,
+                        },
+                    }],
+                    children: None,
+                    color: TextColor::Default,
+                },
+            };
+
+            let page_request = PageCreateRequest {
+                parent,
+                properties: Properties {
+                    properties: HashMap::new(), // no properties
+                },
+                children: Some(vec![title_block]),
+            };
             match api.create_page(page_request).await {
                 Ok(page) => {
                     let content = page.properties.title().unwrap_or("no title".into());
